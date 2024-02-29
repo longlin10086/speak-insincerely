@@ -3,6 +3,7 @@ import asyncio
 import gradio as gr
 
 from question.topic import topic1
+from question.topic import topic2
 
 from typing import Any, List
 
@@ -27,9 +28,10 @@ RULES = """
 这是几条规则。
 """
 
-topic = [topic1]
+topic = [topic1, topic2]
 current_topic_index = 0
 is_passed = False
+is_finished = False
 
 attempt_times = 0
 
@@ -47,19 +49,24 @@ def send_message(
         history: Any | None) -> (str, list[str], str):
     global attempt_times
     global is_passed
+    global is_finished
+    global current_topic_index
     message = []
-    if not varify_input(topic[current_topic_index].limit, input_):
-        gr.Warning("输入不合法，请重新输入！")
-        message = [(history[i]["content"], history[i + 1]["content"]) for i in range(0, len(history) - 1, 2)]
+    if is_finished:
+        gr.Info("恭喜你完成所有题目！")
     else:
-        input_, message, history = asyncio.run(get_response(input_, history))
-        # time.sleep(0.25)
-        attempt_times += 1
-        output = message[-1][1]
-        # gr.Info(f"{output}")
-        if topic[current_topic_index].validator(output, input_):
-            gr.Info("恭喜您通过本题！")
-            is_passed = True
+        if not varify_input(topic[current_topic_index].limit, input_):
+            gr.Warning("输入不合法，请重新输入！")
+            message = [(history[i]["content"], history[i + 1]["content"]) for i in range(0, len(history) - 1, 2)]
+        else:
+            input_, message, history = asyncio.run(get_response(input_, history))
+            # time.sleep(0.25)
+            attempt_times += 1
+            output = message[-1][1]
+            # gr.Info(f"{output}")
+            if topic[current_topic_index].validator(output, input_):
+                gr.Info("恭喜您通过本题！")
+                is_passed = True
 
     return input_, message, update_counter()
 
@@ -68,15 +75,25 @@ def next_question(input_: str,
                   chat: List[str],
                   state: List[str]) -> (str, List, List, str, str, str):
     global is_passed
+    global is_finished
     global current_topic_index
-    if not is_passed:
-        gr.Warning("您尚未完成本题呢！完成后再开启下一题吧")
+    if is_finished:
+        gr.Info("恭喜你完成所有题目！")
     else:
-        current_topic_index += 1
-        gr.Info(f"欢迎来到第{current_topic_index}题")
-        input_ = ""
-        chat = []
-        state = []
+        if not is_passed:
+            gr.Warning("您尚未完成本题呢！完成后再开启下一题吧")
+        else:
+            current_topic_index += 1
+            if current_topic_index >= len(topic):
+                gr.Info("恭喜你完成所有题目！")
+                current_topic_index -= 1
+                is_finished = True
+            else:
+                gr.Info(f"欢迎来到第{current_topic_index+1}题")
+                input_ = ""
+                chat = []
+                state = []
+                is_passed = False
     return (input_,
             chat,
             state,
