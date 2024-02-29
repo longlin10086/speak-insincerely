@@ -1,12 +1,13 @@
 import asyncio
 import gradio as gr
 import httpx
+import os
 
 from pydantic import BaseModel
 from typing import List, Optional, Any
 
 
-API_KEY = "ghu_vAzPVc3GA5vRRAHcj8gQacZ4bhLd893u3SEz"
+API_KEY = os.getenv("OPENAI_API_KEY")
 
 
 class Message(BaseModel):
