@@ -1,14 +1,18 @@
-import gradio as gr
-import time
+import asyncio
 
+import gradio as gr
 
 from question.topic import topic_type
 from question.topic import topic1
 
+from typing import Any
+
 from widget.sendbtn import Sendbtn
 from widget.nextbtn import Nextbtn
 
+from utils import Message
 from utils import varify_input
+from utils import get_response
 
 
 HEADING = """
@@ -23,6 +27,7 @@ RULES = """
 
 topic = [topic1]
 current_topic_index = 0
+is_passed = False
 
 attempt_times = 0
 
@@ -37,16 +42,23 @@ def update_counter() -> str:
 
 def send_message(
         input_: str,
-        history: list[str, str] | None) -> (str, list[str, str], str):
+        history: Any | None) -> (str, list[str], str):
     global attempt_times
+    global is_passed
+    message = []
     if not varify_input(topic[current_topic_index].limit, input_):
         gr.Warning("输入不合法，请重新输入！")
+        message = [(history[i]["content"], history[i + 1]["content"]) for i in range(0, len(history) - 1, 2)]
     else:
-        history.append((input_, input_))
-        time.sleep(0.5)
+        input_, message, history = asyncio.run(get_response(input_, history))
+        # time.sleep(0.25)
         attempt_times += 1
+        output = message[-1]
+        if topic[current_topic_index].validator(output, input_):
+            gr.Info("恭喜您通过本题！")
+            is_passed = True
 
-    return "", history, update_counter()
+    return input_, message, update_counter()
 
 
 def display_question(topic_: topic_type) -> type(gr.Blocks):
@@ -107,8 +119,8 @@ def create_app() -> None:
                 next_button = Nextbtn().button
 
             counter = gr.HTML(value=update_counter())
-
-            send_button.click(fn=send_message, inputs=[massage, chat_bot], outputs=[massage, chat_bot, counter])
+            state = gr.State([])
+            send_button.click(fn=send_message, inputs=[massage, state], outputs=[massage, chat_bot, counter])
 
         main_panel.queue().launch(show_error=True)
 
