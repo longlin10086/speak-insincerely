@@ -1,4 +1,4 @@
-from gradio import Button, Error
+from gradio import Button
 
 
 class Sendbtn:

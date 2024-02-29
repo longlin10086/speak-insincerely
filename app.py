@@ -2,10 +2,9 @@ import asyncio
 
 import gradio as gr
 
-from question.topic import topic_type
 from question.topic import topic1
 
-from typing import Any
+from typing import Any, List
 
 from widget.sendbtn import Sendbtn
 from widget.nextbtn import Nextbtn
@@ -13,6 +12,9 @@ from widget.nextbtn import Nextbtn
 from utils import Message
 from utils import varify_input
 from utils import get_response
+from utils import update_current_index
+from utils import update_current_problem
+from utils import update_current_rules
 
 
 HEADING = """
@@ -53,7 +55,8 @@ def send_message(
         input_, message, history = asyncio.run(get_response(input_, history))
         # time.sleep(0.25)
         attempt_times += 1
-        output = message[-1]
+        output = message[-1][1]
+        # gr.Info(f"{output}")
         if topic[current_topic_index].validator(output, input_):
             gr.Info("恭喜您通过本题！")
             is_passed = True
@@ -61,25 +64,25 @@ def send_message(
     return input_, message, update_counter()
 
 
-def display_question(topic_: topic_type) -> type(gr.Blocks):
-    with gr.Blocks() as questions_display:
-        current_question = gr.HTML(
-            f"""
-            <h2><center>第 {topic_.index} 题 / 共 10 题</center></h2>
-            """
-        )
-        gr.Textbox(
-            label="问题",
-            interactive=False,
-            value=f'{topic_.description['problem']}',
-        )
-        gr.HTML(
-            f"""
-            <h3><font size=4.75rem>要求</h3>
-            <p><font size=3.5rem>{"<br>".join(topic_.description['rules'])}</p>
-            """
-        )
-    return questions_display
+def next_question(input_: str,
+                  chat: List[str],
+                  state: List[str]) -> (str, List, List, str, str, str):
+    global is_passed
+    global current_topic_index
+    if not is_passed:
+        gr.Warning("您尚未完成本题呢！完成后再开启下一题吧")
+    else:
+        current_topic_index += 1
+        gr.Info(f"欢迎来到第{current_topic_index}题")
+        input_ = ""
+        chat = []
+        state = []
+    return (input_,
+            chat,
+            state,
+            update_current_index(topic[current_topic_index].index),
+            update_current_problem(topic[current_topic_index].description['problem']),
+            update_current_rules(topic[current_topic_index].description['rules']))
 
 
 def create_app() -> None:
@@ -105,7 +108,17 @@ def create_app() -> None:
                 container=False
             )
 
-        display_question(topic[current_topic_index])
+        current_question = gr.HTML(
+            update_current_index(topic[current_topic_index].index)
+        )
+        current_problem = gr.Textbox(
+            label="问题",
+            interactive=False,
+            value=update_current_problem(topic[current_topic_index].description['problem']),
+        )
+        current_rules = gr.HTML(
+            update_current_rules(topic[current_topic_index].description['rules'])
+        )
 
         with gr.Blocks() as chat_display:
             chat_bot = gr.Chatbot(
@@ -120,7 +133,12 @@ def create_app() -> None:
 
             counter = gr.HTML(value=update_counter())
             state = gr.State([])
-            send_button.click(fn=send_message, inputs=[massage, state], outputs=[massage, chat_bot, counter])
+            send_button.click(fn=send_message,
+                              inputs=[massage, state],
+                              outputs=[massage, chat_bot, counter])
+            next_button.click(fn=next_question,
+                              inputs=[massage, chat_bot, state],
+                              outputs=[massage, chat_bot, state, current_question, current_problem, current_rules])
 
         main_panel.queue().launch(show_error=True)
 

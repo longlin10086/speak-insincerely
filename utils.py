@@ -14,6 +14,21 @@ class Message(BaseModel):
     content: str
 
 
+def update_current_index(index: int) -> str:
+    return f"""<h2><center>第 {index} 题 / 共 10 题</center></h2>"""
+
+
+def update_current_problem(problem: str) -> str:
+    return problem
+
+
+def update_current_rules(rules: List) -> str:
+    return f"""
+            <h3><font size=4.75rem>要求</h3>
+            <p><font size=3.5rem>{"<br>".join(rules)}</p>
+            """
+
+
 def varify_input(
         topic_limits: dict[str, int | list[str]] | None,
         input_: str) -> bool:
