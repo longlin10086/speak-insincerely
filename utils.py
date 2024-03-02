@@ -81,14 +81,14 @@ async def chat_interface(
                             "messages": messages
                         }
                     )
-                    # gr.Info(f"Status Code : {resp.status_code}")
+                    gr.Info(f"Status Code : {resp.status_code}")
                     if resp.status_code == 200:
                         return resp.json()["choices"][0]["message"]["content"]
                     else:
-                        # gr.Warning(f"{resp.content}")
+                        gr.Warning(f"{resp.content}")
                         keep_loop = False
                 except Exception as e:
-                    # gr.Warning(f"{e}")
+                    gr.Warning(f"{e}")
                     counter = counter + 1
                     keep_loop = counter < number_retries
     except asyncio.TimeoutError as e:

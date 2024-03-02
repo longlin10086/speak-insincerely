@@ -1,9 +1,15 @@
 import asyncio
+import os
+import signal
 
 import gradio as gr
 
+from multiprocessing import Process
+
 from question.topic import topic1
 from question.topic import topic2
+
+from socket import *
 
 from typing import Any, List
 
@@ -17,6 +23,8 @@ from utils import update_current_index
 from utils import update_current_problem
 from utils import update_current_rules
 
+
+ADDR = ('127.0.0.1', 7860)
 
 HEADING = """
 <h1><center><font size=6.75em>言不由衷</center></h1>
@@ -63,7 +71,8 @@ def send_message(
             # time.sleep(0.25)
             attempt_times += 1
             output = message[-1][1]
-            # gr.Info(f"{output}")
+            gr.Info(f"{message}")
+            gr.Info(f"{output}")
             if topic[current_topic_index].validator(output, input_):
                 gr.Info("恭喜您通过本题！")
                 is_passed = True
@@ -161,4 +170,19 @@ def create_app() -> None:
 
 
 if __name__ == '__main__':
-    create_app()
+    listener = socket()
+    listener.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
+    listener.bind(ADDR)
+    listener.listen(15)
+
+    signal.signal(signal.SIGCHLD, signal.SIG_IGN)
+
+    while True:
+        try:
+            conn, addr = listener.accept()
+        except Exception as e:
+            continue
+
+        p = Process(target=create_app)
+        p.daemon = True
+        p.start()
