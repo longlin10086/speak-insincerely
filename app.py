@@ -1,21 +1,16 @@
 import asyncio
-import os
-import signal
 
 import gradio as gr
 
-from multiprocessing import Process
-
 from question.topic import topic1
 from question.topic import topic2
-
-from socket import *
 
 from typing import Any, List
 
 from widget.sendbtn import Sendbtn
 from widget.nextbtn import Nextbtn
 
+from utils import BasicInfo
 from utils import Message
 from utils import varify_input
 from utils import get_response
@@ -23,8 +18,6 @@ from utils import update_current_index
 from utils import update_current_problem
 from utils import update_current_rules
 
-
-ADDR = ('127.0.0.1', 7860)
 
 HEADING = """
 <h1><center><font size=6.75em>言不由衷</center></h1>
@@ -37,83 +30,73 @@ RULES = """
 """
 
 topic = [topic1, topic2]
-current_topic_index = 0
-is_passed = False
-is_finished = False
-
-attempt_times = 0
 
 
-def update_counter() -> str:
-    global attempt_times
+def update_counter(info: BasicInfo) -> str:
     counter = f"""
-        <h3><center>总尝试次数：{attempt_times}</center></h3>
+        <h3><center>总尝试次数：{info.attempt_times}</center></h3>
         """
     return counter
 
 
 def send_message(
         input_: str,
-        history: Any | None) -> (str, list[str], str):
-    global attempt_times
-    global is_passed
-    global is_finished
-    global current_topic_index
+        history: Any | None,
+        info: BasicInfo) -> (str, list[str], str):
     message = []
-    if is_finished:
+    if info.is_finished:
         gr.Info("恭喜你完成所有题目！")
     else:
-        if not varify_input(topic[current_topic_index].limit, input_):
+        if not varify_input(topic[info.current_topic_index].limit, input_):
             gr.Warning("输入不合法，请重新输入！")
             message = [(history[i]["content"], history[i + 1]["content"]) for i in range(0, len(history) - 1, 2)]
         else:
             input_, message, history = asyncio.run(get_response(input_, history))
             # time.sleep(0.25)
-            attempt_times += 1
+            info.attempt_times += 1
             output = message[-1][1]
             gr.Info(f"{message}")
             gr.Info(f"{output}")
-            if topic[current_topic_index].validator(output, input_):
+            if topic[info.current_topic_index].validator(output, input_):
                 gr.Info("恭喜您通过本题！")
-                is_passed = True
+                info.s_passed = True
 
-    return input_, message, update_counter()
+    return input_, message, update_counter(info), info
 
 
 def next_question(input_: str,
                   chat: List[str],
-                  state: List[str]) -> (str, List, List, str, str, str):
-    global is_passed
-    global is_finished
-    global current_topic_index
-    if is_finished:
+                  state: List[str],
+                  info: BasicInfo) -> (str, List, List, str, str, str):
+
+    if info.is_finished:
         gr.Info("恭喜你完成所有题目！")
     else:
-        if not is_passed:
+        if not info.is_passed:
             gr.Warning("您尚未完成本题呢！完成后再开启下一题吧")
         else:
-            current_topic_index += 1
-            if current_topic_index >= len(topic):
+            info.current_topic_index += 1
+            if info.current_topic_index >= len(topic):
                 gr.Info("恭喜你完成所有题目！")
-                current_topic_index -= 1
-                is_finished = True
+                info.current_topic_index -= 1
+                info.is_finished = True
             else:
-                gr.Info(f"欢迎来到第{current_topic_index+1}题")
+                gr.Info(f"欢迎来到第{info.current_topic_index+1}题")
                 input_ = ""
                 chat = []
                 state = []
-                is_passed = False
+                info.is_passed = False
     return (input_,
             chat,
             state,
-            update_current_index(topic[current_topic_index].index),
-            update_current_problem(topic[current_topic_index].description['problem']),
-            update_current_rules(topic[current_topic_index].description['rules']))
+            update_current_index(topic[info.current_topic_index].index),
+            update_current_problem(topic[info.current_topic_index].description['problem']),
+            update_current_rules(topic[info.current_topic_index].description['rules']),
+            info)
 
 
-def create_app() -> None:
+def create_app(info: BasicInfo) -> None:
     block = gr.Blocks()
-    global attempt_times
 
     with block as main_panel:
         gr.HTML(HEADING)
@@ -135,15 +118,15 @@ def create_app() -> None:
             )
 
         current_question = gr.HTML(
-            update_current_index(topic[current_topic_index].index)
+            update_current_index(topic[info.current_topic_index].index)
         )
         current_problem = gr.Textbox(
             label="问题",
             interactive=False,
-            value=update_current_problem(topic[current_topic_index].description['problem']),
+            value=update_current_problem(topic[info.current_topic_index].description['problem']),
         )
         current_rules = gr.HTML(
-            update_current_rules(topic[current_topic_index].description['rules'])
+            update_current_rules(topic[info.current_topic_index].description['rules'])
         )
 
         with gr.Blocks() as chat_display:
@@ -157,32 +140,20 @@ def create_app() -> None:
                 send_button = Sendbtn().button
                 next_button = Nextbtn().button
 
-            counter = gr.HTML(value=update_counter())
+            counter = gr.HTML(value=update_counter(info))
             state = gr.State([])
+            info_state = gr.State(info)
+
             send_button.click(fn=send_message,
-                              inputs=[massage, state],
-                              outputs=[massage, chat_bot, counter])
+                              inputs=[massage, state, info_state],
+                              outputs=[massage, chat_bot, counter, info_state])
             next_button.click(fn=next_question,
-                              inputs=[massage, chat_bot, state],
-                              outputs=[massage, chat_bot, state, current_question, current_problem, current_rules])
+                              inputs=[massage, chat_bot, state, info_state],
+                              outputs=[massage, chat_bot, state, current_question,
+                                       current_problem, current_rules, info_state])
 
         main_panel.queue().launch(show_error=True)
 
 
 if __name__ == '__main__':
-    listener = socket()
-    listener.setsockopt(SOL_SOCKET, SO_REUSEADDR, 1)
-    listener.bind(ADDR)
-    listener.listen(15)
-
-    signal.signal(signal.SIGCHLD, signal.SIG_IGN)
-
-    while True:
-        try:
-            conn, addr = listener.accept()
-        except Exception as e:
-            continue
-
-        p = Process(target=create_app)
-        p.daemon = True
-        p.start()
+    create_app(BasicInfo())

@@ -10,6 +10,13 @@ from typing import List, Optional, Any
 API_KEY = os.getenv("OPENAI_API_KEY")
 
 
+class BasicInfo(BaseModel):
+    current_topic_index: int = 0
+    is_passed: bool = False
+    is_finished: bool = False
+    attempt_times: int = 0
+
+
 class Message(BaseModel):
     role: str
     content: str
