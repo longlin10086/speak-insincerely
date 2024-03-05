@@ -12,4 +12,4 @@ COPY . .
 ARG USER_API_KEY=default
 ENV OPENAI_API_KEY=${USER_API_KEY}
 
-CMD [ "python", "./app.py" ]
+CMD [ "python", "app.py" ]
