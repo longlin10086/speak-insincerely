@@ -59,7 +59,7 @@ def send_message(
             gr.Info(f"{output}")
             if topic[info.current_topic_index].validator(output, input_):
                 gr.Info("恭喜您通过本题！")
-                info.s_passed = True
+                info.is_passed = True
 
     return input_, message, update_counter(info), info
 
