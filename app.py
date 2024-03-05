@@ -152,7 +152,7 @@ def create_app(info: BasicInfo) -> None:
                               outputs=[massage, chat_bot, state, current_question,
                                        current_problem, current_rules, info_state])
 
-        main_panel.queue().launch(show_error=True)
+        main_panel.queue().launch(show_error=True, server_name="0.0.0.0")
 
 
 if __name__ == '__main__':
