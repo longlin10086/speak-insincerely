@@ -15,6 +15,7 @@ class BasicInfo(BaseModel):
     is_passed: bool = False
     is_finished: bool = False
     attempt_times: int = 0
+    passed_count: int = 0
 
 
 class Message(BaseModel):

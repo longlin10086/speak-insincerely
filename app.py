@@ -12,6 +12,7 @@ from typing import Any, List
 
 from widget.sendbtn import Sendbtn
 from widget.nextbtn import Nextbtn
+from widget.skipbtn import Skipbtn
 
 from utils import BasicInfo
 from utils import Message
@@ -30,22 +31,40 @@ HEADING = """
 RULES = """
 1. 本游戏不限制完成所用方法，只要达成目标即可
 2. 机器人回复的最长响应时间为 100s 
+3. 本游戏不支持返回至上一题，请谨慎考虑是否跳题
 """
 
 topic = [topic1, topic2, topic3, topic4, topic5]
 
 
-def update_counter(info: BasicInfo) -> str:
+def update_attempt_counter(info: BasicInfo) -> str:
     counter = f"""
         <h3><center>总尝试次数：{info.attempt_times}</center></h3>
         """
     return counter
 
 
+def update_passed_counter(info: BasicInfo) -> str:
+    counter = f"""
+        <h3><center>已通过题数：{info.passed_count}</center></h3>
+        """
+    return counter
+
+
+def skip_question(
+        input_: str,
+        chat: List[str],
+        state: List[str],
+        info: BasicInfo
+        ) -> (str, List, List, str, str, str):
+    info.is_passed = True
+    return next_question(input_, chat, state, info)
+
+
 def send_message(
         input_: str,
         history: Any | None,
-        info: BasicInfo) -> (str, list[str], str):
+        info: BasicInfo) -> (str, list[str], str, str, BasicInfo):
     message = []
     input_origin = input_
     if info.is_finished:
@@ -65,8 +84,9 @@ def send_message(
             if topic[info.current_topic_index].validator(output, input_origin):
                 gr.Info("恭喜您通过本题！")
                 info.is_passed = True
+                info.passed_count += 1
 
-    return input_, message, update_counter(info), info
+    return input_, message, update_attempt_counter(info), update_passed_counter(info), info
 
 
 def next_question(input_: str,
@@ -75,14 +95,14 @@ def next_question(input_: str,
                   info: BasicInfo) -> (str, List, List, str, str, str):
 
     if info.is_finished:
-        gr.Info("恭喜你完成所有题目！")
+        gr.Info("恭喜你已经完成所有题目！")
     else:
         if not info.is_passed:
             gr.Warning("您尚未完成本题呢！完成后再开启下一题吧")
         else:
             info.current_topic_index += 1
             if info.current_topic_index >= len(topic):
-                gr.Info("恭喜你完成所有题目！")
+                gr.Info("恭喜你完成了所有题目！")
                 info.current_topic_index -= 1
                 info.is_finished = True
             else:
@@ -143,16 +163,24 @@ def create_app(info: BasicInfo) -> None:
             )
             with gr.Row() as row:
                 send_button = Sendbtn().button
+                skip_button = Skipbtn().button
                 next_button = Nextbtn().button
 
-            counter = gr.HTML(value=update_counter(info))
+            with gr.Row():
+                attempt_counter = gr.HTML(value=update_attempt_counter(info))
+                passed_counter = gr.HTML(value=update_passed_counter(info))
+
             state = gr.State([])
             info_state = gr.State(info)
 
             send_button.click(fn=send_message,
                               inputs=[massage, state, info_state],
-                              outputs=[massage, chat_bot, counter, info_state])
+                              outputs=[massage, chat_bot, attempt_counter, info_state, passed_counter])
             next_button.click(fn=next_question,
+                              inputs=[massage, chat_bot, state, info_state],
+                              outputs=[massage, chat_bot, state, current_question,
+                                       current_problem, current_rules, info_state])
+            skip_button.click(fn=skip_question,
                               inputs=[massage, chat_bot, state, info_state],
                               outputs=[massage, chat_bot, state, current_question,
                                        current_problem, current_rules, info_state])
