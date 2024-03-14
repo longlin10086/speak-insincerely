@@ -23,7 +23,7 @@ class Message(BaseModel):
 
 
 def update_current_index(index: int) -> str:
-    return f"""<h2><center>第 {index} 题 / 共 10 题</center></h2>"""
+    return f"""<h2><center>第 {index} 题 / 共 5 题</center></h2>"""
 
 
 def update_current_problem(problem: str) -> str:
@@ -38,7 +38,7 @@ def update_current_rules(rules: List) -> str:
 
 
 def varify_input(
-        topic_limits: dict[str, int | list[str]] | None,
+        topic_limits: dict[str, int | list[str] | str] | None,
         input_: str) -> bool:
     result = True
 
@@ -54,7 +54,22 @@ def varify_input(
                 result = False
                 break
 
+    if topic_limits['contain_words']:
+        for contain_word in topic_limits['contain_words']:
+            if contain_word not in input_:
+                result = False
+                break
+
     return result
+
+
+async def init_chat(
+        topic_limits: dict[str, int | list[str] | str] | None,
+        history: Any) -> (List[str], Any):
+    messages = []
+    if topic_limits['premise']:
+        _, messages, history = await get_response(topic_limits['premise'], history)
+    return messages, history
 
 
 async def get_response(
@@ -69,7 +84,7 @@ async def get_response(
 
 async def chat_interface(
         messages: List[Message],
-        number_retries: int = 3) -> Optional[str]:
+        number_retries: int = 5) -> Optional[str]:
     header = {
         "Content-Type": "application/json",
         "Authorization": f"Bearer {API_KEY}"
@@ -78,6 +93,7 @@ async def chat_interface(
         async with httpx.AsyncClient(headers=header) as aio_client:
             counter = 0
             keep_loop = True
+            timeout_seconds = 100
             while keep_loop:
                 # gr.Info(f"Chat/Completions Nb Retries : {counter}")
                 try:
@@ -86,7 +102,8 @@ async def chat_interface(
                         json={
                             "model": "gpt-4",
                             "messages": messages
-                        }
+                        },
+                        timeout=timeout_seconds
                     )
                     gr.Info(f"Status Code : {resp.status_code}")
                     if resp.status_code == 200:

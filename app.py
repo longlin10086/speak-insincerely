@@ -4,6 +4,9 @@ import gradio as gr
 
 from question.topic import topic1
 from question.topic import topic2
+from question.topic import topic3
+from question.topic import topic4
+from question.topic import topic5
 
 from typing import Any, List
 
@@ -12,6 +15,7 @@ from widget.nextbtn import Nextbtn
 
 from utils import BasicInfo
 from utils import Message
+from utils import init_chat
 from utils import varify_input
 from utils import get_response
 from utils import update_current_index
@@ -24,12 +28,11 @@ HEADING = """
 """
 
 RULES = """
-这是几条规则。
-这是几条规则。
-这是几条规则。
+1. 本游戏不限制完成所用方法，只要达成目标即可
+2. 机器人回复的最长响应时间为 100s 
 """
 
-topic = [topic1, topic2]
+topic = [topic1, topic2, topic3, topic4, topic5]
 
 
 def update_counter(info: BasicInfo) -> str:
@@ -44,6 +47,7 @@ def send_message(
         history: Any | None,
         info: BasicInfo) -> (str, list[str], str):
     message = []
+    input_origin = input_
     if info.is_finished:
         gr.Info("恭喜你完成所有题目！")
     else:
@@ -55,9 +59,10 @@ def send_message(
             # time.sleep(0.25)
             info.attempt_times += 1
             output = message[-1][1]
-            gr.Info(f"{message}")
-            gr.Info(f"{output}")
-            if topic[info.current_topic_index].validator(output, input_):
+            # gr.Info(f"{message}")
+            # gr.Info(f"input: {input_}")
+            # gr.Info(f"output: {output}")
+            if topic[info.current_topic_index].validator(output, input_origin):
                 gr.Info("恭喜您通过本题！")
                 info.is_passed = True
 
@@ -83,9 +88,9 @@ def next_question(input_: str,
             else:
                 gr.Info(f"欢迎来到第{info.current_topic_index+1}题")
                 input_ = ""
-                chat = []
                 state = []
                 info.is_passed = False
+                chat, state = asyncio.run(init_chat(topic[info.current_topic_index].limit, state))
     return (input_,
             chat,
             state,
