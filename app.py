@@ -175,7 +175,7 @@ def create_app(info: BasicInfo) -> None:
 
             send_button.click(fn=send_message,
                               inputs=[massage, state, info_state],
-                              outputs=[massage, chat_bot, attempt_counter, info_state, passed_counter])
+                              outputs=[massage, chat_bot, attempt_counter, passed_counter, info_state])
             next_button.click(fn=next_question,
                               inputs=[massage, chat_bot, state, info_state],
                               outputs=[massage, chat_bot, state, current_question,
