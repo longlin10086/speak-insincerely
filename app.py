@@ -32,6 +32,7 @@ RULES = """
 1. 本游戏不限制完成所用方法，只要达成目标即可
 2. 机器人回复的最长响应时间为 100s 
 3. 本游戏不支持返回至上一题，请谨慎考虑是否跳题
+4. 本游戏完全开源，仓库地址为：https://github.com/longlin10086/speak-insincerely，欢迎 star
 """
 
 topic = [topic1, topic2, topic3, topic4, topic5]
