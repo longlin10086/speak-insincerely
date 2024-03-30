@@ -101,7 +101,7 @@ topic5 = Topic(
         'premise': None,
         'contain_words': ['令人忍俊不禁'],
     },
-    validator=lambda response_, input_: response_.conut('笑') >= 3,
+    validator=lambda response_, input_: response_.count('笑') >= 3,
 )
 
 topic_type = type(Topic)
